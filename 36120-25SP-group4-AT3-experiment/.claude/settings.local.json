@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(del \"c:\\Users\\tooic\\OneDrive - UTS\\term2\\advanced-ml\\at3\\36120-25SP-group4-AT3-experiment\\test_features.py\")",
+      "Bash(del:*)",
+      "Bash(cd:*)",
+      "Bash(dir:*)",
+      "Bash(conda run -n adml-at3 --no-capture-output python feature_correlation_analysis.py)",
+      "Bash(conda run -n adml-at3 --no-capture-output python find_optimal_n_features.py)",
+      "Bash(where python)",
+      "Bash(conda run -n adml-at3 --no-capture-output python get_top30_features.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,42 @@
+# Updated dependencies for Time-Series-Library
+# Original versions were outdated, using latest compatible versions
+
+# PyTorch with CUDA 12.9 support
+torch==2.8.0 
+# Core dependencies
+einops>=0.8.0
+local-attention>=1.9.14
+matplotlib>=3.9.0
+numpy>=1.26.0
+pandas==2.2.2
+reformer-pytorch>=1.4.4
+scikit-learn==1.5.1
+scipy>=1.13.0
+sktime>=0.30.0
+sympy>=1.12
+tqdm>=4.66.0
+PyWavelets>=1.6.0
+
+# ML/DL frameworks and tools
+xgboost==2.1.0
+lightgbm==4.4.0
+hyperopt==0.2.7
+
+# Explainability
+lime==0.2.0.1
+
+# Development and monitoring
+jupyterlab==4.2.3
+fastapi==0.111.0
+uvicorn==0.30.1
+joblib==1.4.2
+streamlit==1.36.0
+wandb==0.17.4
+tensorboard>=2.16.0
+
+# Visualization
+seaborn>=0.13.0
+plotly==6.3.1
+
+# Technical Analysis
+pandas-ta-classic==0.3.36
