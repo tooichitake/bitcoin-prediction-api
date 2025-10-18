@@ -1,9 +1,10 @@
-https://github.com/your-username/bitcoin-prediction-api
+https://github.com/tooichitake/bitcoin-prediction-api
 
-Instructions:
-1. Replace "your-username" with your actual GitHub username
-2. Create a PRIVATE repository with this name
-3. Add admin access to the following users:
+Repository: bitcoin-prediction-api
+Owner: tooichitake
+Visibility: Private
+
+Admin access granted to:
    - anthony.so@uts.edu.au
    - reasmey.tith@uts.edu.au
    - Natalia.Tkachenko@uts.edu.au
