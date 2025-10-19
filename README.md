@@ -1,5 +1,7 @@
 # Bitcoin Price Prediction FastAPI
 
+![CI/CD Pipeline](https://github.com/tooichitake/bitcoin-prediction-api/workflows/CI/CD%20Pipeline/badge.svg)
+
 FastAPI application for predicting next-day high price of Bitcoin using Linear Regression.
 
 ## 🎯 Project Overview

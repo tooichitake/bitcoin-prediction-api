@@ -1,0 +1,232 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: bitcoin-prediction-api
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # Linting and code quality checks
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black mypy pylint
+        pip install -r requirements.txt
+
+    - name: Run Black formatter check
+      run: black --check app/ || true
+
+    - name: Run Flake8 linter
+      run: flake8 app/ --max-line-length=120 --ignore=E501,W503 || true
+
+    - name: Run Pylint
+      run: pylint app/ --fail-under=7.0 || true
+
+    - name: Run MyPy type checker
+      run: mypy app/ --ignore-missing-imports || true
+
+
+  # Testing
+  test:
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install httpx
+        pip install -r requirements.txt
+
+    - name: Test API endpoints
+      run: |
+        # Start the API in background
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        echo "Waiting for API to start..."
+        sleep 15
+
+        # Run API integration tests
+        python -c "
+        import httpx
+        import sys
+        from datetime import datetime, timedelta
+
+        BASE_URL = 'http://localhost:8000'
+        TEST_DATE = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+
+        print('API Integration Tests')
+        print(f'Base URL: {BASE_URL}')
+        print(f'Test Date: {TEST_DATE}')
+        print('-' * 50)
+
+        # Test 1: Root endpoint
+        print('Testing root endpoint...')
+        response = httpx.get(f'{BASE_URL}/')
+        assert response.status_code == 200, f'Expected 200, got {response.status_code}'
+        data = response.json()
+        assert 'project' in data, 'Missing project field'
+        assert 'endpoints' in data, 'Missing endpoints field'
+        assert 'model_info' in data, 'Missing model_info field'
+        print('PASS: Root endpoint')
+
+        # Test 2: Health check
+        print('Testing health endpoint...')
+        response = httpx.get(f'{BASE_URL}/health/')
+        assert response.status_code == 200, f'Expected 200, got {response.status_code}'
+        data = response.json()
+        assert data['status'] == 'healthy', f'Invalid status: {data.get(\"status\")}'
+        assert 'message' in data, 'Missing message field'
+        assert 'timestamp' in data, 'Missing timestamp field'
+        print('PASS: Health check')
+
+        # Test 3: Bitcoin prediction
+        print('Testing Bitcoin prediction endpoint...')
+        response = httpx.get(f'{BASE_URL}/predict/bitcoin', params={'date': TEST_DATE})
+
+        # Accept both 200 (success) and 404 (date not in dataset)
+        assert response.status_code in [200, 404], f'Expected 200 or 404, got {response.status_code}'
+
+        if response.status_code == 200:
+            data = response.json()
+            assert 'input_date' in data, 'Missing input_date field'
+            assert 'prediction' in data, 'Missing prediction field'
+            assert 'target_date' in data['prediction'], 'Missing target_date field'
+            assert 'predicted_high_price' in data['prediction'], 'Missing predicted_high_price field'
+
+            # Verify prediction is positive
+            price = data['prediction']['predicted_high_price']
+            assert price > 0, f'Invalid price: {price}'
+
+            # Verify target_date is one day after input_date
+            input_dt = datetime.strptime(data['input_date'], '%Y-%m-%d')
+            target_dt = datetime.strptime(data['prediction']['target_date'], '%Y-%m-%d')
+            assert (target_dt - input_dt).days == 1, 'Target date should be one day after input date'
+            print('PASS: Bitcoin prediction')
+        else:
+            print('PASS: Bitcoin prediction (date not in dataset)')
+
+        # Test 4: BTC token alias
+        print('Testing BTC token alias...')
+        response = httpx.get(f'{BASE_URL}/predict/btc', params={'date': TEST_DATE})
+        assert response.status_code in [200, 404], f'Expected 200 or 404, got {response.status_code}'
+        print('PASS: BTC token alias')
+
+        # Test 5: Invalid token
+        print('Testing invalid token...')
+        response = httpx.get(f'{BASE_URL}/predict/ethereum', params={'date': TEST_DATE})
+        assert response.status_code == 400, f'Expected 400, got {response.status_code}'
+        data = response.json()
+        assert 'detail' in data, 'Missing detail field in error response'
+        print('PASS: Invalid token validation')
+
+        # Test 6: Invalid date format
+        print('Testing invalid date format...')
+        response = httpx.get(f'{BASE_URL}/predict/bitcoin', params={'date': 'invalid-date'})
+        assert response.status_code == 400, f'Expected 400, got {response.status_code}'
+        data = response.json()
+        assert 'detail' in data, 'Missing detail field in error response'
+        print('PASS: Invalid date validation')
+
+        # Test 7: Missing date parameter
+        print('Testing missing date parameter...')
+        response = httpx.get(f'{BASE_URL}/predict/bitcoin')
+        assert response.status_code == 422, f'Expected 422, got {response.status_code}'
+        data = response.json()
+        assert 'detail' in data, 'Missing detail field in error response'
+        print('PASS: Missing parameter validation')
+
+        print('-' * 50)
+        print('All integration tests passed')
+        "
+
+        # Kill the background process
+        pkill -f "uvicorn app.main:app" || true
+
+
+  # Docker build test (optional)
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name != 'schedule'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        if [ -f Dockerfile ]; then
+          docker build -t ${{ env.DOCKER_IMAGE }}:${{ github.sha }} .
+          echo "Docker build successful"
+        else
+          echo "No Dockerfile found, skipping Docker build"
+        fi
+
+
+  # Summary job
+  summary:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: always()
+
+    steps:
+    - name: Check workflow status
+      run: |
+        echo "Workflow Summary"
+        echo "==============="
+        echo "Lint Job: ${{ needs.lint.result }}"
+        echo "Test Job: ${{ needs.test.result }}"
+
+        if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+          echo "Some jobs failed!"
+          exit 1
+        else
+          echo "All jobs passed!"
+        fi

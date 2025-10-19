@@ -10,7 +10,8 @@
       "Bash(python3:*)",
       "Bash(where python)",
       "Bash(cat:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(mkdir -p tests)"
     ],
     "deny": [],
     "ask": []

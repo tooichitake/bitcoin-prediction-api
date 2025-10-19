@@ -131,7 +131,7 @@ async def root():
         "objective": "Predict next-day high price for Bitcoin using Linear Regression with 30 optimal features",
         "student": "Group 4 - AT3 Assignment",
         "course": "36120 Advanced Machine Learning - UTS",
-        "github_repo": "https://github.com/tooichitake/bitcoin-prediction-api",
+        "github_repo": "https://github.com/tooichitake/bitcoin-prediction-api.git",
         "endpoints": {
             "GET /": "API documentation - displaying project objectives, endpoints list, input/output format, and Github repo",
             "GET /health/": "Health check - returning status code 200 with welcome message",
